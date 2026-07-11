@@ -1,0 +1,65 @@
+#my_casus_belli = {
+#	potential = { ... }		# trigger to make some CBs invalid for certain types of countries; this = attacker (CB owner); default: { always = yes }
+#	is_valid = { ... }		# trigger, evaluated daily to check if CB should be created or destroyed automatically, does not affect CBs granted via script;
+#								# this = attacker (CB owner), from = defender (target country); default: { always = yes }
+#	destroy_if = { ... }	# trigger, evaluated daily to destroy CBs that have been granted via script ahead of expiration date;
+#								# this = attacker (CB owner), from = defender (target country); default: { always = no }
+#	show_notification = no/yes	# optional (default = yes), flag to control whether this CB will generate a notification (to avoid duplicate
+#								# notification when a claim CB is generated)
+#
+# Proxy War specific #
+#	proxy_war_resources = { ... }	# Cost when this CB is selected for a Proxy War. Paid by the war's instigator
+#	on_proxy_war_start = { ... }	# Effect executed when a Proxy War is validated.
+#}
+
+cb_containment_syn = {
+	show_in_diplomacy = no
+	show_notification = no
+	potential = {
+		from = {
+			OR = {
+				is_country_type = synth_queen
+			}
+		}
+		NOR = {
+			is_country_type = default
+			has_valid_civic = civic_fanatic_purifiers
+			has_valid_civic = civic_machine_terminator
+			has_valid_civic = civic_machine_assimilator
+			has_valid_civic = civic_scorched_earth
+			has_valid_civic = civic_hive_scorched_earth
+			has_valid_civic = civic_hive_devouring_swarm
+		}
+	}
+	is_valid = {
+		has_total_war_cb = yes
+		OR = {
+			is_subject = no
+			overlord = { NOT = { is_same_value = from } }
+		}
+		NOT = { is_overlord_to = FROM }
+		from = {
+			OR = {
+				is_country_type = awakened_fallen_empire
+				is_country_type = synth_queen
+				has_valid_civic = civic_fanatic_purifiers
+				has_valid_civic = civic_hive_devouring_swarm
+				has_valid_civic = civic_machine_assimilator
+				has_valid_civic = civic_machine_terminator
+				has_valid_civic = civic_scorched_earth
+				has_valid_civic = civic_hive_scorched_earth
+				has_menace_perk = menp_behemoth_ever_hungry
+			}
+		}
+	}
+	proxy_war_resources = {
+		category = proxy_war
+		cost = {
+			influence = 200
+		}
+	}
+	on_proxy_war_start = {
+		pay_proxy_war_additional_resources = { VALUE = -1000 }
+	}
+}
+

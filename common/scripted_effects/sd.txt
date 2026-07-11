@@ -1,0 +1,25 @@
+# effect = {
+#     join_alliance = {
+#         who = root
+#         name = NAME_League_of_Non-Aligned_Powers
+#         override_requirements = yes
+#     }
+#     federation = {
+#         set_federation_type = military_federation
+#     }
+#     every_country = {
+#         limit = {
+#             OR = {
+#                 is_country_type = fallen_empire
+#                 is_country_type = awakened_fallen_empire
+#                 has_country_flag = scion_overlord_warning_attend #玩家宣战
+#             }
+#         }
+#         join_alliance = {
+#             who = prev
+#             name = NAME_League_of_Non-Aligned_Powers
+#             override_requirements = yes
+#         }
+#
+#     }
+# } 调试代码用

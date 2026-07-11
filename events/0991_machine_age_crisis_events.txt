@@ -1,0 +1,2026 @@
+#Synth Queen
+#crisis.8000-8999 - Spawning and Player Facing Events
+#crisis.9000-9999 - Player Situation
+#crisis.10000-10999 - Hidden Queen Events and Retalitations
+#crisis.20000-25000 - Player Investigations
+
+namespace = crisis
+
+#########################
+#						#
+# Synth Queen Events	#
+#	 					#
+#########################
+
+# 风暴首次扩散后触发换空间站定时器，禁用后续其他堕落的风暴扩散
+country_event = {
+	id = crisis.8030
+	hide_window = yes
+	fire_only_once = yes
+	is_triggered_only = yes
+
+	immediate = {
+		set_crisis_stage_2 = yes
+
+		every_system = {
+			limit = {
+				has_star_flag = synth_queen_system
+				NOT = {
+					any_ship_in_system = {
+						is_ship_class = shipclass_starbase
+					}
+				}
+			}
+			create_fleet = {
+				name = "NAME_Synth_Queen_Starbase"
+				effect = {
+					set_owner = event_target:synth_queen_country_global
+					create_ship = {
+						name = random
+						design = "NAME_Synth_Queen_Starbase"
+					}
+					set_location = {
+						target = prev
+					}
+					while = {
+						count = 2
+						create_synth_queen_platform = yes
+					}
+				}
+			}
+		}
+
+		every_country = {
+			limit = {
+				OR = {
+					is_country_type = default
+					is_country_type = fallen_empire
+					is_country_type = awakened_fallen_empire
+				}
+			}
+			country_event = { id = crisis.8039 days = 15 }
+			if = {
+				limit = {
+					NOT = { is_country_type = default }
+				}
+				add_modifier = {
+					modifier = beset_by_cetana
+					days = -1
+				}
+
+			}
+		}
+		#除天灾出生国2格以内的其他堕落风暴
+		country_event = { id = crisis.8042 days = 360 random = 50 } #Fallen Empire weakener
+
+		country_event = { id = crisis.30009 days = 411 }
+		#自定义事件循环删除空间站创建塞塔娜星垒
+		country_event = { id = crisis.30000 days = 3 }
+		set_global_flag = synth_queen_revenge_done
+	}
+}
+
+country_event = {
+	id = crisis.30009
+	hide_window = yes
+	is_triggered_only = yes
+
+	immediate = {
+		# 通知合成女王国家事件开始
+		event_target:synth_queen_country_global = {
+			country_event = { id = crisis.8050 }
+		}
+		country_event = { id = crisis.30009 days = 720 random = 50}
+	}
+}
+# 每180天替换一次非天灾模板空间站
+country_event = {
+	id = crisis.30000
+	hide_window = yes
+	is_triggered_only = yes
+
+	immediate = {
+		every_system = {
+			limit = { 
+				#找轻蔑之幕星系
+				#has_modifier = queen_scorn_storm
+				#星系拥有者是合成女王
+				owner = { is_country_type = synth_queen }
+				# 筛选条件：星系带有“合成女王系统”标志（已占领），且非首都星系
+				#has_star_flag = synth_queen_system  
+				#NOT = { has_star_flag = synth_queen_capital }  
+			}
+			every_fleet_in_system = {
+				# Destroy all stations 删除空间站否则不能创建塞塔娜星垒
+				limit = {
+					#是空间站
+					is_mobile = no
+					#空间站所有者是塞塔娜
+					owner = { is_synth_queen_country_type = yes }
+					#排除女王空间站模板
+					NOT = { is_ship_size = big_starbase_synth_queen
+							is_ship_size = starbase_synth_queen
+					}
+				}
+				delete_fleet = this
+			}
+			
+			#创建小星垒
+			create_starbase = { 
+				size = starbase_synth_queen
+				owner = event_target:synth_queen_country_global
+				effect = {
+					while = {
+						count = 2
+						create_synth_queen_platform = yes
+					}
+				}
+			}
+		}
+		country_event = { id = crisis.30000 days = 180 }
+	}	
+}
+
+# 合成女王危机事件 - 削弱堕落帝国以便女王能更快击败它们
+# 此事件通过三个阶段逐步削弱目标国家：
+# 第一阶段：激活纳米迷雾并施加风暴修正
+# 第二阶段：削弱舰队战斗力
+# 第三阶段：摧毁殖民地和首都人口
+country_event = {
+	id = crisis.8042
+	hide_window = yes
+	is_triggered_only = yes
+
+	trigger = {
+		OR = {
+			is_country_type = fallen_empire
+			is_country_type = awakened_fallen_empire
+		}
+	}
+
+	immediate = {
+
+		# # 通知合成女王国家事件开始
+		# event_target:synth_queen_country_global.owner = {
+		# 	country_event = { id = crisis.8050 }
+		# }
+
+		# 第一阶段：激活纳米迷雾笼罩
+		if = { #step 1 - Fog them up
+			limit = {
+				NOT = { has_country_flag = synth_queen_storm }
+			}
+			# 激活纳米迷雾机器
+			activate_fog_machine = synth_queen_nanite
+			# 设置风暴标记防止重复执行
+			set_country_flag = synth_queen_storm
+			# 为所有非首都不星系添加女王蔑视风暴修正
+			every_system_within_border = {
+				limit = {
+					is_capital_system = no
+				}
+				add_modifier = {
+					modifier = queen_scorn_storm
+					days = -1
+				}
+				country_event = { id = crisis.8042 days = 360 random = 50 }
+			}
+		}
+
+		# # 第二阶段：削弱海军舰队
+		# else_if = { #step 2 - weaken fleets
+		# 	limit = {
+		# 		has_country_flag = synth_queen_storm
+		# 		NOT = { has_country_flag = weaker_navy }
+		# 	}
+		# 	# 随机选择一支可移动舰队
+		# 	random_owned_fleet = {
+		# 		limit = {
+		# 			is_mobile = yes
+		# 		}
+		# 		# 对舰队中的每艘船只进行处理
+		# 		every_owned_ship = {
+		# 			random_list = {
+		# 				10 = {}  #改几率
+		# 				90 = {   #改几率
+		# 					# 90%概率减少船只10%生命值
+		# 					reduce_hp_percent = 10  #修改直接死亡 destroy_ship = this
+		# 				}
+		# 			}
+		# 		}
+		# 	}
+		# 	# 设置海军削弱标记
+		# 	set_country_flag = weaker_navy
+		# 	# 360天后重新触发此事件
+		# 	country_event = { id = crisis.8042 days = 360 }
+		# }
+		#
+		# # 第三阶段及后续：清除殖民地
+		# else = { #step 3+ - wipe colonies
+		# 	# 随机选择一个拥有的行星进行处理
+		# 	random_owned_planet = {
+		# 		# 处理非首都殖民地
+		# 		if = {
+		# 			limit = {
+		# 				is_capital = no
+		# 				is_colony = yes
+		# 				1 = 2  #添加不可能选择
+		# 			}
+		# 			#remove_all_buildings = yes
+		# 			#destroy_colony = yes
+		# 			# 如果不是人工星球，则将其转变为灰色物质星球
+		# 			#if = {
+		# 			#	limit = {
+		# 			#		is_artificial = no
+		# 			#	}
+		# 			#	change_pc = pc_gray_goo
+		# 			#	# 如果没有地形改造候选者修正，则添加该修正
+		# 			#	if = {
+		# 			#		limit = {
+		# 			#			NOT = {
+		# 			#				has_modifier = terraforming_candidate
+		# 			#			}
+		# 			#		}
+		# 			#		add_modifier = {
+		# 			#			modifier = terraforming_candidate
+		# 			#			days = -1
+		# 			#		}
+		# 			#	}
+		# 			#}
+		# 		}
+		# 		# 处理首都行星
+		# 		else_if = {
+		# 			limit = {
+		# 				is_colony = yes #is_capital = yes
+		# 			}
+		# 			# 增加行星毁灭度15点（原注释为35）
+		# 			add_planet_devastation = 3 #35
+		# 			# 杀死10个随机人口组（原注释为20）
+		# 			while = {
+		# 				count = 5  #20
+		# 				random_owned_pop_group = {
+		# 					kill_single_pop = yes
+		# 				}
+		# 			}
+		# 		}
+		# 	}
+		# 	# 180天后重新触发此事件继续破坏
+		# 	country_event = { id = crisis.8042 days = 180 }
+		# }
+	}
+}
+
+# Reinforcements while at war with FE 与堕落战斗时塞塔娜刷新舰队
+country_event = {
+	id = crisis.8050
+	hide_window = yes
+
+	is_triggered_only = yes
+
+	trigger = {
+		is_country_type = synth_queen
+		any_country = {
+			OR = {
+				is_country_type = fallen_empire
+				is_country_type = awakened_fallen_empire
+			}
+		}
+	}
+
+	immediate = {
+		if = { #改为一年刷3支舰队，上限12
+			limit = {
+				count_owned_fleet = {
+					count < 13
+					limit = {
+						is_mobile = yes
+					}
+				}
+			}
+			synth_queen_create_war_fleet = yes
+			synth_queen_create_war_fleet = yes
+		}
+	}
+}
+
+#Queen's First Speech 结束后触发堕落与玩家的对话（仿先辈子弟）
+country_event = {
+	id = crisis.8040
+	title = "crisis.8040.name"
+	diplomatic_title = "crisis.8040.name"
+	desc = "crisis.8040.desc"
+	show_sound = crisis_8040_desc
+	auto_select = no
+
+	diplomatic = yes
+
+	event_window_type = crisis_leader_conversation
+	situation = event_target:synth_queen_doomclock_situation
+
+	picture_event_data = {
+		portrait = event_target:cetana_face
+		room = event_target:synth_queen_country_global.owner
+	}
+	picture = GFX_crisis_conversation_bg_synth_queen
+
+	is_triggered_only = yes
+
+	trigger = {
+		any_country = {
+			is_synth_queen_country_type = yes
+		}
+		NOT = {	has_country_flag = speech_1	}
+	}
+
+	immediate = {
+		get_cetana_face = yes
+		set_global_flag = synth_queen_ongoing
+		set_global_flag = galactic_crisis_happened
+		set_global_flag = synth_queen_speech_1_happened
+		establish_communications_no_message = event_target:synth_queen_country_global
+
+		event_target:synth_queen_country_global = {
+			add_trust = {
+				amount = 50
+				who = root.owner
+			}
+		}
+		set_country_flag = speech_1
+		set_country_flag = crisis.8040.1.flag
+		set_country_flag = synth_queen_conversation_ongoing
+	}
+
+	#Who are you?
+	option = {
+		name = crisis.8040.1.a
+		trigger = {
+			has_country_flag = crisis.8040.1.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8040.2.reply
+		sound = crisis_8040_2_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8040.1.flag
+			set_country_flag = crisis.8040.2.flag
+			synth_queen_details_reveal = yes
+			random_country = {
+				limit = {
+					is_synth_queen_country_type = yes
+				}
+				set_country_type = synth_queen
+				save_event_target_as = synth_queen_country
+				set_name = "NAME_Synth_Queen"
+				change_country_flag = {
+					icon = {
+						category = "special"
+						file = "synth_queen.dds"
+					}
+					background = {
+						category = "backgrounds"
+						file = "flag_BG_13.dds"
+					}
+					colors = {
+						"burgundy"
+						"light_orange"
+						"null"
+						"null"
+					}
+				}
+				random_system = {
+					limit = {
+						has_star_flag = synth_queen_capital
+					}
+					random_system_planet = {
+						limit = {
+							has_planet_flag = synth_queen_bastille
+						}
+						set_owner = event_target:synth_queen_country_global
+					}
+				}
+			}
+		}
+	}
+
+	#What should we call you?
+	option = {
+		name = crisis.8040.2.a
+		trigger = {
+			has_country_flag = crisis.8040.2.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8040.3.reply
+		sound = crisis_8040_3_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8040.2.flag
+			set_country_flag = crisis.8040.3.flag
+		}
+	}
+
+	#Cycle of Pain
+	option = {
+		name = crisis.8040.2.b
+		trigger = {
+			has_country_flag = crisis.8040.3.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8040.4.reply
+		sound = crisis_8040_4_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8040.3.flag
+			set_country_flag = crisis.8040.4.flag
+		}
+	}
+
+	#End of convo
+	option = {
+		name = {
+			text = crisis.8040.4.a
+			trigger = {
+				is_militarist = no
+				is_xenophobe = no
+				is_spiritualist = no
+				is_megacorp = no
+				NOT = { has_valid_civic = civic_machine_servitor }
+			}
+		}
+		name = {
+			text = crisis.8040.4.b
+			trigger = {
+				is_militarist = yes
+			}
+		}
+		name = {
+			text = crisis.8040.4.c
+			trigger = {
+				is_xenophobe = yes
+			}
+		}
+		name = {
+			text = crisis.8040.4.d
+			trigger = {
+				is_spiritualist = yes
+			}
+		}
+		name = {
+			text = crisis.8040.4.e
+			trigger = {
+				is_megacorp = yes
+			}
+		}
+		name = {
+			text = crisis.8040.4.f
+			trigger = {
+				has_valid_civic = civic_machine_servitor
+			}
+		}
+		trigger = {
+			has_country_flag = crisis.8040.4.flag
+		}
+		custom_tooltip = "crisis.8040.diplomacy.tooltip"
+
+
+			
+		if = { # If you don't have the first storm project, get it
+			limit = {
+				NOT = { has_country_flag = synth_queen_started_storm_project }
+			}
+			set_country_flag = synth_queen_started_storm_project
+			enable_special_project = {
+				name = "THE_SYNTH_QUEENS_STORM"
+				owner = ROOT
+			}
+		}
+		hidden_effect = {
+			country_event = { id = crisis.30002 days = 1 }	
+			country_event = { id = crisis.30001 days = 15 }	
+			set_country_flag = can_talk_to_the_synth_queen
+			remove_country_flag = crisis.8040.4.flag
+			remove_country_flag = synth_queen_conversation_ongoing
+			#准备开战前先辈子弟事件
+			synth_queen_scion_warning = yes
+		}
+	}
+}
+
+# FE tells Scion to step aside 真先辈子弟对话
+country_event = {
+	id = crisis.8046
+	title = "crisis.8046.name"
+	desc = "crisis.8046.desc"
+	diplomatic = yes
+	diplomatic_title = BLANK_STRING
+	show_sound = event_bad_omen
+
+	is_triggered_only = yes
+
+	picture_event_data = {
+		portrait = event_target:scion_master
+		planet_background = event_target:scion_master
+		graphical_culture = event_target:scion_master
+		city_level = event_target:scion_master
+		room = event_target:scion_master
+	}
+
+	trigger = {
+		NOR = {
+			has_active_event = { crisis.8046 }
+			has_country_flag = scion_overlord_warning
+		}
+	}
+
+	immediate = {
+		set_country_flag = scion_overlord_warning
+		overlord = { save_event_target_as = scion_master }
+		country_event = { id = crisis.30002 days = 1 }	
+	}
+
+	#宣战
+	option = {
+		name = scion_overlord_warning_attend.1.a
+		custom_tooltip = scion_overlord_warning_attend.2.a
+
+		enable_special_project = {
+				name = "THE_SYNTH_QUEENS_STORM_2"
+				owner = ROOT  # 项目所有者为当前国家（ROOT）
+    	}
+		
+		hidden_effect = {
+			set_country_flag = synth_queen_researched_first_storm_project
+			set_country_flag = protected_from_queen_storm
+			set_country_flag = synth_queen_cannot_yeet_the_fleets
+			set_country_flag = protected_from_queen_storm
+
+			#玩家宣战意向
+			set_country_flag = scion_overlord_warning_attend
+			set_country_flag = synth_queen_cannot_yeet_the_fleets
+		}
+	}
+	option = {
+		name = "UNDERSTOOD"
+		random_agreement = {
+			limit = {
+				owner = { is_same_value = root.overlord }
+				target = { is_same_value = root }
+			}
+			set_agreement_terms = {
+				joins_overlord_wars = joins_overlord_wars_none
+			}
+		}
+	}
+
+
+	after = {
+		hidden_effect = {
+			#开战
+			synth_queen_fe_war = yes
+		}
+	}
+}
+
+#随机选择一个堕落作为对话人
+country_event = {
+	id = crisis.30002
+	hide_window = yes
+	fire_only_once = yes
+	is_triggered_only = yes
+
+	immediate = {
+		#选择堕落对话发起国
+		set_country_flag = duihuaduoluo
+		random_country	= {
+			limit = {
+				OR = {
+					is_country_type = fallen_empire
+					is_country_type = awakened_fallen_empire
+				}
+			}
+			weights = {
+			base = 0.2  # 基础权重 1.0
+			}
+			#给挑到的国家设置标记
+			save_global_event_target_as = duihuaduoluo
+		}
+	}
+}
+
+#堕落与玩家的对话（仿先辈子弟）
+country_event = {
+	id = crisis.30001
+	title = "scion_overlord_warning_help.1.a"
+	desc = "scion_overlord_warning_help.2.a"
+	diplomatic = yes
+	diplomatic_title = BLANK_STRING
+	show_sound = event_bad_omen
+
+	is_triggered_only = yes
+
+	picture_event_data = {
+		portrait = event_target:duihuaduoluo
+		planet_background = event_target:duihuaduoluo
+		graphical_culture = event_target:duihuaduoluo
+		city_level = event_target:duihuaduoluo
+		room = event_target:duihuaduoluo
+	}
+
+	trigger = {
+		NOR = {
+			has_active_event = { crisis.30001 }
+			has_country_flag = scion_overlord_warning
+			OR = {
+					is_country_type = fallen_empire
+					is_country_type = awakened_fallen_empire
+				}
+		}
+
+	}
+
+	immediate = {
+		set_country_flag = scion_overlord_warning
+		overlord = { save_event_target_as = scion_master }
+		every_country = { #换对话国
+			limit = {
+				OR = {
+					is_country_type = fallen_empire
+					is_country_type = awakened_fallen_empire
+				}
+			}
+			remove_country_flag = duihuaduoluo
+		}
+	}
+	#宣战
+	option = {
+		name = scion_overlord_warning_attend.1.a
+		custom_tooltip = scion_overlord_warning_attend.2.a
+
+		enable_special_project = {
+				name = "THE_SYNTH_QUEENS_STORM_2"
+				owner = ROOT  # 项目所有者为当前国家（ROOT）
+    	}
+		
+		hidden_effect = {
+			set_country_flag = synth_queen_researched_first_storm_project
+			set_country_flag = protected_from_queen_storm
+			set_country_flag = synth_queen_cannot_yeet_the_fleets
+			set_country_flag = protected_from_queen_storm
+
+			#玩家宣战意向
+			set_country_flag = scion_overlord_warning_attend
+			set_country_flag = synth_queen_cannot_yeet_the_fleets
+		}
+	}
+
+	#少量援助
+	option = {
+		name = scion_overlord_warning_attend.1.b
+		custom_tooltip = scion_overlord_warning_attend.2.b
+		allow = {
+			# 检查资源库存是否达标（调整为工整近似值，接近1/3份）
+			resource_stockpile_compare = { resource = energy       value >= 35000 }   # 原33333→35000（更工整，接近1/3）
+			resource_stockpile_compare = { resource = minerals     value >= 35000 }   # 原33333→35000（同上）
+			resource_stockpile_compare = { resource = alloys       value >= 23000 }  # 原233333→230000（23万，更工整）
+			resource_stockpile_compare = { resource = volatile_motes value >= 300 }    # 原333→300（整百数）
+			resource_stockpile_compare = { resource = sr_dark_matter value >= 150 }    # 原167→150（整十数）
+		}
+		add_resource = {
+			# 扣除工整近似值的资源（负数表示消耗）
+			energy       = -35000   # 调整后能量消耗
+			minerals     = -35000   # 调整后矿物消耗
+			alloys       = -23000  # 调整后合金消耗
+			volatile_motes = -300    # 调整后易爆微粒消耗
+			sr_dark_matter = -150    # 调整后暗物质消耗
+		}
+		hidden_effect = {
+			set_country_flag = scion_overlord_warning_attend
+			every_country = { #堕落支援
+				limit = {
+					OR = {
+						is_country_type = fallen_empire
+						is_country_type = awakened_fallen_empire
+					}
+				}
+				while = { #刷2次
+					count = 1
+					create_fleet = {
+						effect = {
+							set_owner = prev.owner
+							while = {
+								count = 6
+								create_fallen_empire_large_ship = yes
+							}
+							while = {
+								count = 10
+								create_fallen_empire_small_ship = yes
+							}
+							
+							set_location = {
+								target = owner.capital_scope
+								distance = 30
+								angle = random
+							}
+						}
+					}
+				}
+			}
+		}
+	}	
+	#部分援助
+	option = {
+		name = scion_overlord_warning_attend.1.c
+		custom_tooltip = scion_overlord_warning_attend.2.c
+		allow = {
+			# 检查资源库存是否达标（按1/3份工整值×2，保持2/3比例，取整到工整数）
+			resource_stockpile_compare = { resource = energy       value >= 70000 }   # 1/3份35000×2=70000（原66667→70000，更工整）
+			resource_stockpile_compare = { resource = minerals     value >= 70000 }   # 同上（原66667→70000）
+			resource_stockpile_compare = { resource = alloys       value >= 50000 }  # 1/3份230000×2=460000（原466667→460000，整万数）
+			resource_stockpile_compare = { resource = volatile_motes value >= 600 }    # 1/3份300×2=600（原667→600，整百数）
+			resource_stockpile_compare = { resource = sr_dark_matter value >= 300 }    # 1/3份150×2=300（原333→300，整百数）
+		}
+		add_resource = {
+			# 扣除工整近似值的资源（负数表示消耗，与allow对应）
+			energy       = -70000   # 调整后能量消耗（1/3份35000×2）
+			minerals     = -70000   # 调整后矿物消耗（同上）
+			alloys       = -50000  # 调整后合金消耗（1/3份230000×2）
+			volatile_motes = -600    # 调整后易爆微粒消耗（1/3份300×2）
+			sr_dark_matter = -300    # 调整后暗物质消耗（1/3份150×2）
+		}
+		hidden_effect = {
+			every_country = { #堕落支援
+				limit = {
+					OR = {
+						is_country_type = fallen_empire
+						is_country_type = awakened_fallen_empire
+					}
+				}			
+				while = { #刷2次
+					count = 2
+					create_fleet = {
+						effect = {
+							set_owner = prev.owner
+							while = {
+								count = 6
+								create_fallen_empire_large_ship = yes
+							}
+							while = {
+								count = 10
+								create_fallen_empire_small_ship = yes
+							}
+							while = {
+								count = 4
+								create_fallen_empire_titan = yes
+							}
+							
+							set_location = {
+								target = owner.capital_scope
+								distance = 30
+								angle = random
+							}
+						}
+					}
+				}
+			}
+		}
+	}	
+	#大量援助
+	option = {
+		name = scion_overlord_warning_attend.1.d
+		custom_tooltip = scion_overlord_warning_attend.2.d
+		allow = {
+			# 检查所有需消耗资源的库存是否达标（必须同时满足）
+			resource_stockpile_compare = { resource = energy       value >= 100000 }  # 能量 ≥ 100000
+			resource_stockpile_compare = { resource = minerals     value >= 100000 }  # 矿物 ≥ 100000
+			resource_stockpile_compare = { resource = alloys       value >= 70000 }  # 合金 ≥ 700000
+			resource_stockpile_compare = { resource = volatile_motes value >= 1000 }   # 易爆微粒 ≥ 1000
+			resource_stockpile_compare = { resource = sr_dark_matter value >= 500 }    # 暗物质（sr_前缀）≥ 500
+		}
+		add_resource = {
+			# 一次性扣除所有资源（负数表示消耗）
+			energy       = -100000
+			minerals     = -100000
+			alloys       = -70000
+			volatile_motes = -1000
+			sr_dark_matter = -500
+		}
+		enable_special_project = {
+			name = "THE_SYNTH_QUEENS_STORM_2"
+			owner = ROOT  # 项目所有者为当前国家（ROOT）
+    	}
+		hidden_effect = {
+
+			set_country_flag = synth_queen_researched_first_storm_project
+			set_country_flag = protected_from_queen_storm
+			set_country_flag = synth_queen_cannot_yeet_the_fleets
+			set_country_flag = protected_from_queen_storm
+
+			set_country_flag = synth_queen_cannot_yeet_the_fleets 
+			#玩家宣战意向
+			set_country_flag = scion_overlord_warning_attend
+			every_country = { #堕落支援
+				limit = {
+					OR = {
+						is_country_type = fallen_empire
+						is_country_type = awakened_fallen_empire
+					}
+				}
+
+					while = { #刷4次
+						count = 3
+						owner = {
+							create_leader = { #刷一个十级超级舰长
+								class = admiral
+								species = owner_main_species
+								name = random
+								skill = 10
+								leader_age_min = 25
+								leader_age_max = 45
+								traits = {
+									trait = leader_trait_cautious
+									trait = leader_trait_scout
+									trait = leader_trait_aggressive
+									trait = leader_trait_engineer
+								}
+							}
+						}
+						create_fleet = {
+							effect = {
+								set_owner = prev.owner
+								while = {
+									count = 6
+									create_fallen_empire_large_ship = yes
+								}
+								while = {
+									count = 10
+									create_fallen_empire_small_ship = yes
+								}
+								while = {
+									count = 4
+									create_fallen_empire_titan = yes
+								}
+								
+								set_location = {
+									target = owner.capital_scope
+									distance = 30
+									angle = random
+								}
+							}
+						}
+						last_created_fleet = { assign_leader = last_created_leader }
+					}
+			}
+		}		
+	}
+	#无行动
+	option = {
+		name = "UNDERSTOOD"
+		custom_tooltip = scion_overlord_warning_attend.1.f
+	}
+
+	after = {
+		hidden_effect = {
+			#开战
+			synth_queen_fe_war = yes
+		}
+	}
+}
+
+#Player Diplomacy
+country_event = {
+	id = crisis.8060
+	title = TRANSMISSION
+	diplomatic_title = "crisis.8060.name"
+	desc = "crisis.8060.like.desc"
+	show_sound = crisis_8060_like_desc
+	diplomatic = yes
+
+	event_window_type = crisis_leader_conversation
+	situation = event_target:synth_queen_doomclock_situation
+
+	picture_event_data = {
+		portrait = event_target:cetana_face
+		room = event_target:synth_queen_country_global.owner
+	}
+	picture = GFX_crisis_conversation_bg_synth_queen
+
+	is_triggered_only = yes
+
+	immediate = {
+		get_cetana_face = yes
+		random_country = {
+			limit = {
+				is_country_type = synth_queen
+			}
+			save_event_target_as = synth_queen_country
+		}
+	}
+
+	#H - Declare war after finishing the situation
+	option = {
+		name = crisis.8060.war
+		icon = {
+			icon = GFX_text_casus_belli_target
+			text = WARGOAL
+		}
+		trigger = {
+			has_synth_queen_dialogue_flag = no
+		}
+		set_country_flag = synth_queen_researched_first_storm_project
+		set_country_flag = protected_from_queen_storm
+		set_country_flag = synth_queen_cannot_yeet_the_fleets
+		set_country_flag = protected_from_queen_storm
+		if = {
+			limit = {
+				has_country_flag = synth_queen_cannot_yeet_the_fleets
+				has_country_flag = protected_from_queen_storm
+			}
+			custom_tooltip = synth_queen_able_to_attack_cetana
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.war.reply
+		sound = crisis_8060_war_reply
+
+		hidden_effect = {
+			set_country_flag = crisis.8060.war.flag
+		}
+	}
+
+	option = { # Yes
+		name = crisis.8060.war.a
+		custom_tooltip = crisis.8060.war.a.tt
+		trigger = {
+			has_country_flag = crisis.8060.war.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.war.1.reply
+		sound = crisis_8060_war_1_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.war.flag
+			set_country_flag = crisis.8060.war.1.flag
+		}
+	}
+
+	option = { # No
+		name = crisis.8060.war.b
+		trigger = {
+			has_country_flag = crisis.8060.war.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.war.flag
+		}
+	}
+
+ 	# War starts
+	option = {
+		name = crisis.8060.war.1.a
+		trigger = {
+			has_country_flag = crisis.8060.war.1.flag
+		}
+		if = {
+			limit = {
+				has_modifier = synth_queen_nanite_apprentice
+			}
+			remove_modifier = synth_queen_nanite_apprentice
+		}
+		hidden_effect = {
+			event_target:synth_queen_country_global = {
+				set_country_type = awakened_synth_queen
+				set_country_flag = protected_from_queen_storm
+				country_event = { id = crisis.8156 days = 7 }
+				synth_queen_debuff = yes
+			}
+			every_country = {
+				limit = {
+					OR = {
+						is_country_type = awakened_synth_queen
+						is_country_type = synth_queen_convoys
+						is_country_type = synth_queen_outposts
+					}
+				}
+				set_faction_hostility = {
+					set_hostile = yes
+				}
+			}
+			set_global_flag = synth_queen_war_started
+			remove_country_flag = crisis.8060.war.1.flag
+			set_country_flag = synth_queen_cannot_yeet_the_fleets
+			set_country_flag = protected_from_queen_storm
+		}
+		random_situation = {
+			limit = {
+				is_situation_type = situation_synth_queen_player_facing
+			}
+			destroy_situation = this
+		}
+	}
+
+	#A - How can we help?
+	option = {
+		name = crisis.8060.a
+		trigger = {
+			has_synth_queen_dialogue_flag = no
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.a.reply
+		sound = crisis_8060_1_reply
+		hidden_effect = {
+			set_country_flag = crisis.8060.1.flag
+		}
+	}
+
+	option = {
+		name = crisis.8060.1.a
+		trigger = {
+			has_country_flag = crisis.8060.1.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			if = {
+				limit = {
+					NOT = {
+						has_country_flag = crisis.8060.1.a.opinion
+					}
+				}
+				event_target:synth_queen_country = {
+					add_trust = {
+						amount = 5
+						who = root.owner
+					}
+				}
+				custom_tooltip = synth_queen_approve
+			}
+			remove_country_flag = crisis.8060.1.flag
+			set_country_flag = crisis.8060.1.a.opinion
+		}
+	}
+
+	option = {
+		name = crisis.8060.1.b
+		trigger = {
+			has_country_flag = crisis.8060.1.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.1.flag
+		}
+	}
+
+	#B - You will be stopped
+	option = {
+		name = crisis.8060.b
+		trigger = {
+			has_synth_queen_dialogue_flag = no
+		}
+
+		is_dialog_only = yes
+		response_text = crisis.8060.2.reply
+		sound = crisis_8060_2_reply
+		hidden_effect = {
+			set_country_flag = crisis.8060.2.flag
+		}
+	}
+
+	option = {
+		name = crisis.8060.2.a
+		trigger = {
+			has_country_flag = crisis.8060.2.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			if = {
+				limit = {
+					NOT = {
+						has_country_flag = crisis.8060.2.a.opinion
+					}
+				}
+				event_target:synth_queen_country = {
+					add_trust = {
+						amount = -5
+						who = root.owner
+					}
+				}
+				custom_tooltip = synth_queen_disapprove
+			}
+			remove_country_flag = crisis.8060.2.flag
+			set_country_flag = crisis.8060.2.a.opinion
+		}
+	}
+
+	option = {
+		name = crisis.8060.2.2
+		trigger = {
+			has_country_flag = crisis.8060.2.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.2.flag
+		}
+	}
+
+	#C - Why you mean?
+	option = {
+		name = crisis.8060.c
+		trigger = {
+			has_synth_queen_dialogue_flag = no
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.3.reply
+		sound = crisis_8060_3_reply
+		hidden_effect = {
+			set_country_flag = crisis.8060.3.flag
+		}
+	}
+
+	option = {
+		name = crisis.8060.3.a
+		trigger = {
+			has_country_flag = crisis.8060.3.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			if = {
+				limit = {
+					NOT = {
+						has_country_flag = crisis.8060.3.a.opinion
+					}
+				}
+				event_target:synth_queen_country = {
+					add_trust = {
+						amount = -5
+						who = root.owner
+					}
+				}
+				custom_tooltip = synth_queen_disapprove
+			}
+			remove_country_flag = crisis.8060.3.flag
+			set_country_flag = crisis.8060.3.a.opinion
+		}
+	}
+
+	option = {
+		name = crisis.8060.3.b
+		trigger = {
+			has_country_flag = crisis.8060.3.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.3.flag
+		}
+	}
+
+	#D - You blew up our moon. You will pay.
+	option = {
+		name = crisis.8060.d
+		trigger = {
+			has_synth_queen_dialogue_flag = no
+			has_country_flag = synth_queen_question_blew_up_a_planet
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.4.reply
+		sound = crisis_8060_4_reply
+		hidden_effect = {
+			set_country_flag = crisis.8060.4.flag
+		}
+	}
+
+	option = {
+		name = crisis.8060.4.a
+		trigger = {
+			has_country_flag = crisis.8060.4.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			if = {
+				limit = {
+					NOT = {
+						has_country_flag = crisis.8060.4.a.opinion
+					}
+				}
+				event_target:synth_queen_country = {
+					add_trust = {
+						amount = -5
+						who = root.owner
+					}
+				}
+				custom_tooltip = synth_queen_disapprove
+			}
+			remove_country_flag = crisis.8060.4.flag
+			remove_country_flag = synth_queen_question_blew_up_a_planet
+			set_country_flag = crisis.8060.4.a.opinion
+		}
+	}
+
+	option = {
+		name = crisis.8060.4.b
+		trigger = {
+			has_country_flag = crisis.8060.4.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.4.flag
+			remove_country_flag = synth_queen_question_blew_up_a_planet
+		}
+	}
+
+	#E - We opened the box
+	option = {
+		name = crisis.8060.e
+		trigger = {
+			has_synth_queen_dialogue_flag = no
+			has_country_flag = synth_queen_question_opened_the_databank
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.5.reply
+		sound = crisis_8060_5_reply
+		hidden_effect = {
+			set_country_flag = crisis.8060.5.flag
+		}
+	}
+
+	option = {
+		name = crisis.8060.5.a
+		trigger = {
+			has_country_flag = crisis.8060.5.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			if = {
+				limit = {
+					NOT = {
+						has_country_flag = crisis.8060.5.a.opinion
+					}
+				}
+				event_target:synth_queen_country = {
+					add_trust = {
+						amount = -5
+						who = root.owner
+					}
+				}
+				custom_tooltip = synth_queen_disapprove
+			}
+			remove_country_flag = crisis.8060.5.flag
+			remove_country_flag = synth_queen_question_opened_the_databank
+			set_country_flag = crisis.8060.5.a.opinion
+		}
+	}
+
+	option = {
+		name = crisis.8060.5.b
+		trigger = {
+			has_synth_queen_dialogue_flag = no
+			has_country_flag = crisis.8060.5.flag
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.5.flag
+			remove_country_flag = synth_queen_question_opened_the_databank
+		}
+	}
+
+	#Questions what has been done with pops in crisis.8300
+	option = {
+		name = crisis.8060.f
+		trigger = {
+			owner = {
+				has_synth_queen_dialogue_flag = no
+				has_country_flag = synth_queen_question_random_demand_pops
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.6.reply
+		sound = crisis_8060_6_reply
+		hidden_effect = {
+			set_country_flag = crisis.8060.6.flag
+		}
+	}
+
+	option = {
+		name = crisis.8060.6.a
+		trigger = {
+			owner = {
+				has_country_flag =crisis.8060.6.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			if = {
+				limit = {
+					NOT = {
+						has_country_flag = crisis.8060.6.a.opinion
+					}
+				}
+				event_target:synth_queen_country = {
+					add_trust = {
+						amount = -5
+						who = root.owner
+					}
+				}
+				custom_tooltip = synth_queen_disapprove
+			}
+			remove_country_flag = crisis.8060.6.flag
+			remove_country_flag = synth_queen_question_random_demand_pops
+			set_country_flag = crisis.8060.6.a.opinion
+		}
+	}
+
+	option = {
+		name = crisis.8060.6.b
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.6.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.6.flag
+			remove_country_flag = synth_queen_question_random_demand_pops
+		}
+	}
+
+	# Questions motivations in crisis.8315
+	option = {
+		name = crisis.8060.g
+		trigger = {
+			owner = {
+				has_synth_queen_dialogue_flag = no
+				has_country_flag = synth_queen_question_random_demand_system
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.7.reply
+		sound = crisis_8060_7_reply
+		hidden_effect = {
+			set_country_flag = crisis.8060.7.flag
+		}
+	}
+
+	option = {
+		name = crisis.8060.7.a
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.7.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.7.flag
+			remove_country_flag = synth_queen_question_random_demand_system
+		}
+	}
+
+	# Question - How did Zarqlan defeat you?
+	option = {
+		name = crisis.8060.h
+		trigger = {
+			owner = {
+				has_synth_queen_dialogue_flag = no
+				has_country_flag = synth_queen_question_zarqlan_knowledge
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.8.reply
+		sound = crisis_8060_8_reply
+		hidden_effect = {
+			set_country_flag = crisis.8060.8.flag
+		}
+	}
+
+	option = {
+		name = crisis.8060.8.a
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.8.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.8.1.reply
+		sound = crisis_8060_8_1_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.8.flag
+			set_country_flag = crisis.8060.8.1.flag
+		}
+	}
+
+	#Shourd Only
+	option = {
+		name = crisis.8060.8.b
+		custom_tooltip = crisis.8060.animator.tt
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.8.flag
+				has_country_flag = breached_shroud
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.8.1.reply
+		sound = crisis_8060_8_1_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.8.flag
+			set_country_flag = crisis.8060.8.1.flag
+			set_country_flag = synth_queen_can_contact_the_animator_of_clay
+		}
+	}
+
+	option = {
+		name = crisis.8060.8.1.a
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.8.1.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.8.1.flag
+			remove_country_flag = synth_queen_question_zarqlan_knowledge
+		}
+	}
+
+	option = {
+		name = crisis.8060.8.1.b
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.8.1.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			if = {
+				limit = {
+					NOT = {
+						has_country_flag = crisis.8060.8.1.b.opinion
+					}
+				}
+				event_target:synth_queen_country = {
+					add_trust = {
+						amount = -5
+						who = root.owner
+					}
+				}
+				custom_tooltip = synth_queen_disapprove
+			}
+			remove_country_flag = crisis.8060.8.1.flag
+			remove_country_flag = synth_queen_question_zarqlan_knowledge
+			set_country_flag = crisis.8060.8.1.b.opinion
+		}
+	}
+
+	#Shourd Only
+	option = {
+		name = crisis.8060.8.1.c
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.8.1.flag
+				has_country_flag = breached_shroud
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.8.1.flag
+			remove_country_flag = synth_queen_question_zarqlan_knowledge
+		}
+	}
+
+	# Question - Player Gave Zarqlans Head to the Queen
+	option = {
+		name = crisis.8060.i
+		trigger = {
+			owner = {
+				has_synth_queen_dialogue_flag = no
+				has_country_flag = synth_queen_question_gave_zarqlans_head
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.9.reply
+		sound = crisis_8060_9_reply
+		hidden_effect = {
+			set_country_flag = crisis.8060.9.flag
+		}
+	}
+
+	option = {
+		name = crisis.8060.9.a
+		trigger = {
+			owner = {
+				has_country_flag =crisis.8060.9.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.9.flag
+			remove_country_flag = synth_queen_question_gave_zarqlans_head
+		}
+	}
+
+	option = {
+		name = crisis.8060.9.b
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.9.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.9.flag
+			remove_country_flag = synth_queen_question_gave_zarqlans_head
+		}
+	}
+
+	# Question - Found some Cyropods of her old followers
+	option = {
+		name = crisis.8060.j
+		trigger = {
+			owner = {
+				has_synth_queen_dialogue_flag = no
+				has_country_flag = synth_queen_question_found_cryo_pods
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.10.reply
+		sound = crisis_8060_10_reply
+		hidden_effect = {
+			set_country_flag = crisis.8060.10.flag
+		}
+	}
+
+	option = {
+		name = crisis.8060.10.a
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.10.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			if = {
+				limit = {
+					NOT = {
+						has_country_flag = crisis.8060.10.a.opinion
+					}
+				}
+				event_target:synth_queen_country = {
+					add_trust = {
+						amount = 5
+						who = root.owner
+					}
+				}
+				custom_tooltip = synth_queen_approve
+			}
+			remove_country_flag = crisis.8060.10.flag
+			remove_country_flag = synth_queen_question_found_cryo_pods
+			set_country_flag = crisis.8060.10.a.opinion
+		}
+	}
+
+	option = {
+		name = crisis.8060.10.b
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.10.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.10.flag
+			remove_country_flag = synth_queen_question_found_cryo_pods
+		}
+	}
+
+	# Question - Found The Frozen Dreamer
+	option = {
+		name = crisis.8060.k
+		trigger = {
+			owner = {
+				has_synth_queen_dialogue_flag = no
+				has_country_flag = synth_queen_question_found_the_frozen_dreamer
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.11.reply
+		sound = crisis_8060_11_reply
+		hidden_effect = {
+			set_country_flag = crisis.8060.11.flag
+		}
+	}
+
+	option = {
+		name = crisis.8060.11.a
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.11.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.11.flag
+			remove_country_flag = synth_queen_question_found_the_frozen_dreamer
+		}
+	}
+
+	option = {
+		name = crisis.8060.11.b
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.11.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		hidden_effect = {
+			remove_country_flag = crisis.8060.11.flag
+			remove_country_flag = synth_queen_question_found_the_frozen_dreamer
+		}
+	}
+
+	#Nanite Path
+	option = {
+		name = crisis.8060.l
+		icon = {
+			icon = GFX_tradition_nanotech
+			text = tradition_nanotech
+		}
+		trigger = {
+			owner = {
+				has_synth_queen_dialogue_flag = no
+				has_country_flag = synth_queen_question_nanite_apprentice
+				any_country = {
+					is_country_type = synth_queen
+					trust = { who = root value > 49 }
+				}
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.12.reply
+		sound = crisis_8060_12_reply
+		hidden_effect = {
+			set_country_flag = crisis.8060.12.flag
+		}
+	}
+
+	option = {
+		name = crisis.8060.12.a
+		trigger = {
+			owner = {
+				has_country_flag = crisis.8060.12.flag
+			}
+		}
+		is_dialog_only = yes
+		response_text = crisis.8060.neutral.reply
+		sound = crisis_8060_neutral_reply
+		if = {
+			limit = {
+				NOT = {
+					has_country_flag = crisis.8060.12.a.opinion
+				}
+			}
+			hidden_effect = {
+				event_target:synth_queen_country = {
+					add_trust = {
+						amount = 5
+						who = root.owner
+					}
+				}
+			}
+			custom_tooltip = synth_queen_approve
+		}
+		if = {
+			limit = {
+				any_system = {
+					has_star_flag = lgate
+						OR = {
+							has_owner = no
+							owner = { is_same_value = root }
+						}
+					any_system_planet = {
+						is_star = no
+						is_astral_scar = no
+						is_ringworld = no
+						is_colonizable = no
+						NOR = {
+							is_planet_class = pc_black_hole
+							is_planet_class = pc_habitat
+						}
+					}
+				}
+			}
+			custom_tooltip = crisis.8060.12.a.tt
+		}
+		if = {
+			limit = {
+				has_event_chain = l_cluster_chain
+			}
+			generate_lcluster_clue = yes
+		}
+		add_modifier = {
+			modifier = synth_queen_nanite_apprentice
+			days = -1
+		}
+		hidden_effect = {
+			set_country_flag = crisis.8060.12.a.opinion
+			remove_country_flag = crisis.8060.12.flag
+			remove_country_flag = synth_queen_question_nanite_apprentice
+			every_system = {
+				limit = {
+					has_star_flag = lgate
+					OR = {
+						has_owner = no
+						owner = { is_same_value = root }
+					}
+				}
+				every_system_planet = {
+					limit = {
+						NOR = {
+							is_star = yes
+							is_astral_scar = yes
+							is_ringworld = yes
+							is_colonizable = yes
+							is_planet_class = pc_black_hole
+							is_planet_class = pc_habitat
+						}
+					}
+					add_deposit = d_nanites_deposit
+				}
+			}
+		}
+	}
+
+	#Z - End Conversation
+	option = {
+		name = crisis.8060.z
+		trigger = {
+			has_synth_queen_dialogue_flag = no
+		}
+
+		hidden_effect = {
+			if = {
+				limit = {
+					has_country_flag = breached_shroud
+					has_origin = origin_shroud_forged
+					has_country_flag = synth_queen_can_contact_the_animator_of_clay
+					has_covenant_with_end_of_the_cycle = no
+					NOR = {
+						has_country_flag = shroud_forged_traitor
+						has_country_flag = synth_queen_contacted_the_animator_already
+					}
+				}
+				country_event = { id = shroud_forged.700 }
+			}
+		}
+	}
+}
+
+# Final Speech
+country_event = {
+	id = crisis.23005
+	title = "crisis.23005.name"
+	diplomatic_title = "crisis.23005.name"
+	desc = "crisis.23005.desc"
+	show_sound = crisis_23005_desc
+
+	diplomatic = yes
+
+	event_window_type = crisis_leader_conversation
+	situation = event_target:synth_queen_doomclock_situation
+
+	picture_event_data = {
+		portrait = event_target:synth_queen_country.ruler
+		room = event_target:synth_queen_country.owner
+	}
+	picture = GFX_crisis_conversation_bg_synth_queen
+	show_sound = crisis_8040_desc
+
+	is_triggered_only = yes
+
+	immediate = {
+		create_species = {
+			name = "NAME_Cetana"
+			class = "ROBOT"
+			namelist = "CETANA"
+			portrait = "synth_queen"
+			traits = {
+				trait = "trait_mechanical"
+			}
+			effect = {
+				save_event_target_as = synth_queen_species
+			}
+		}
+		create_country = {
+			name = "NAME_Synth_Queen"
+			type = "synth_queen"
+			species = event_target:synth_queen_species
+			name_list = "CETANA"
+			flag = {
+				icon = {
+					category = "special"
+					file = "synth_queen.dds"
+				}
+				background = {
+					category = "backgrounds"
+					file = "flag_BG_13.dds"
+				}
+				colors = {
+					"burgundy"
+					"burgundy"
+					"null"
+					"null"
+				}
+			}
+			effect = {
+				save_event_target_as = synth_queen_country
+				establish_communications = root
+				create_leader = {
+					class = commander
+					species = event_target:synth_queen_country
+					name = "NAME_Cetana"
+					immortal = yes
+					skill = 10
+					event_leader = yes
+					skip_background_generation = yes
+					set_age = 126872
+					custom_description = cetana_desc
+					traits = {
+						0 = subclass_commander_councilor
+					}
+					effect = {
+						change_leader_portrait = cetana_empty
+					}
+				}
+				set_leader = last_created_leader
+			}
+		}
+	}
+
+	#See you never!
+	option = { # Spiritualist Response
+		name = crisis.23005.1
+		trigger = {
+			has_spiritualist_government = yes
+			NOR = {
+				has_ethic = "ethic_fanatic_xenophile"
+				has_ethic = "ethic_fanatic_xenophobe"
+			}
+		}
+	}
+	option = { # Militarist Response
+		name = crisis.23005.2
+		trigger = {
+			has_militarist_government = yes
+			NOR = {
+				has_ethic = "ethic_fanatic_xenophile"
+				has_ethic = "ethic_fanatic_xenophobe"
+			}
+		}
+	}
+	option = { # Materialist Response
+		name = crisis.23005.3
+		trigger = {
+			has_materialist_government = yes
+			NOR = {
+				has_ethic = "ethic_fanatic_xenophile"
+				has_ethic = "ethic_fanatic_xenophobe"
+			}
+		}
+	}
+	option = { # Pacifist Response
+		name = crisis.23005.4
+		trigger = {
+			has_pacifist_government = yes
+			NOR = {
+				has_ethic = "ethic_fanatic_xenophile"
+				has_ethic = "ethic_fanatic_xenophobe"
+			}
+		}
+	}
+	option = { # Corporate Response
+		name = crisis.23005.5
+		trigger = {
+			OR = {
+				has_government = gov_megacorporation
+				has_government = gov_trade_league
+				is_megacorp = yes
+			}
+			NOR = {
+				has_ethic = "ethic_fanatic_xenophile"
+				has_ethic = "ethic_fanatic_xenophobe"
+			}
+		}
+	}
+	option = { # Default Response
+		name = crisis.23005.6
+		trigger = {
+			NOR = {
+				has_ethic = "ethic_fanatic_xenophile"
+				has_ethic = "ethic_fanatic_xenophobe"
+				has_government = gov_megacorporation
+				has_government = gov_trade_league
+				is_megacorp = yes
+				has_pacifist_government = yes
+				has_materialist_government = yes
+				has_militarist_government = yes
+				has_spiritualist_government = yes
+			}
+		}
+	}
+	option = { # Special Governments Default Response
+		name = crisis.23005.6
+		trigger = {
+			OR = {
+				has_generic_government = yes
+				has_government = gov_enlightened_monarchy
+				has_government = gov_elective_monarchy
+				has_government = gov_hive_mind
+				has_government = gov_wilderness
+				has_government = gov_parasitic_overmind
+				has_government = gov_successor_khanate
+				has_government = gov_diadochi
+				has_ethic = ethic_gestalt_consciousness
+				is_fallen_empire = yes
+			}
+			NOR = {
+				has_ethic = "ethic_fanatic_xenophobe"
+				has_ethic = "ethic_fanatic_xenophile"
+			}
+		}
+	}
+	option = { # Xenophobe Response
+		name = crisis.23005.7
+		trigger = {
+			has_ethic = "ethic_fanatic_xenophobe"
+		}
+	}
+	option = { # Xenophile Response
+		name = crisis.23005.8
+		trigger = {
+			has_ethic = "ethic_fanatic_xenophile"
+		}
+	}
+
+	after = {
+		hidden_effect = {
+			country_event = { id = crisis.23010 days = 15 }
+			every_country = {
+				limit = {
+					is_synth_queen_country_type = yes
+				}
+				destroy_country = yes
+			}
+			every_country = {
+				remove_country_flag = synth_queen_player_can_see_doomclock
+				if = {
+					limit = {
+						OR = {
+							is_country_type = fallen_empire
+							is_country_type = awakened_fallen_empire
+						}
+						and = {
+							exists = federation
+						}
+					}
+						leave_alliance = { override_requirements = yes }
+				}
+			}
+		}
+	}
+}
