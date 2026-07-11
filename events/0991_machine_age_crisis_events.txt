@@ -183,8 +183,9 @@ country_event = {
 					modifier = queen_scorn_storm
 					days = -1
 				}
-				country_event = { id = crisis.8042 days = 360 random = 50 }
 			}
+			# 重新触发本事件：country_event 需在国家作用域（原先误置于 every_system_within_border 星系作用域内）
+			country_event = { id = crisis.8042 days = 360 random = 50 }
 		}
 
 		# # 第二阶段：削弱海军舰队
