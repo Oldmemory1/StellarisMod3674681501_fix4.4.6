@@ -118,8 +118,9 @@ country_event = {
 					#空间站所有者是塞塔娜
 					owner = { is_synth_queen_country_type = yes }
 					#排除女王空间站模板
-					NOT = { is_ship_size = big_starbase_synth_queen
-							is_ship_size = starbase_synth_queen
+					NOR = {
+						is_ship_size = big_starbase_synth_queen
+						is_ship_size = starbase_synth_queen
 					}
 				}
 				delete_fleet = this
