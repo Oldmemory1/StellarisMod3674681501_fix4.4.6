@@ -8,7 +8,7 @@
 # 即：一旦塞塔娜被击败(原版 crisis.23015 会设置 synth_queen_defeated)，即恢复这些外交。
 # 保留 synth_queen_happened 原样，不影响危机再触发保护、成就/抱负/银河焦点等“已击败”判定。
 # 注意：文件名特意不同于原版 00_actions.txt，避免整文件替换；仅覆盖同名 key。
-# 与原版版本对齐：v4.3.0
+# 与原版版本对齐：v4.4.6
 # ============================================================================
 
 # Declare war, usable by regular, fallen & awakened empires
