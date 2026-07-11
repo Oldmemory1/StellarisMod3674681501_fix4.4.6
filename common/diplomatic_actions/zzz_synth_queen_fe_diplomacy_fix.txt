@@ -1,0 +1,389 @@
+# ============================================================================
+# 塞塔娜直接宣战 - 修复：战胜合成女王(Cetana)后恢复对堕落帝国的外交
+# ----------------------------------------------------------------------------
+# 原版机制：危机开始(crisis.8005)设置全局旗标 synth_queen_happened，且永不移除。
+# 下列 4 个对堕落帝国的外交行动因此被永久禁用(失败提示 the_fe_is_busy_with_synth_queen)。
+# 本文件按 key 覆盖这 4 个行动(其余原版行动不受影响)，仅在原门槛的 OR 中追加一条：
+#     has_global_flag = synth_queen_defeated
+# 即：一旦塞塔娜被击败(原版 crisis.23015 会设置 synth_queen_defeated)，即恢复这些外交。
+# 保留 synth_queen_happened 原样，不影响危机再触发保护、成就/抱负/银河焦点等“已击败”判定。
+# 注意：文件名特意不同于原版 00_actions.txt，避免整文件替换；仅覆盖同名 key。
+# 与原版版本对齐：v4.3.0
+# ============================================================================
+
+# Declare war, usable by regular, fallen & awakened empires
+action_declare_war = {
+	icon = "GFX_diplomacy_status_war"
+	requires_actor_independence = no # You are able to declare war only on your overlord when being a vassal, this special case is handled in code instead.
+	requires_recipient_independence = no
+	requires_alliance_vote = yes
+	requires_unanimous_vote = yes
+	auto_accepted = yes
+	should_show_auto_accept_message_actor = yes
+	should_show_auto_accept_message_recipient = yes
+	should_open_auto_accept_message_recipient = yes
+	should_notify_all_communications = yes
+	action_type = aggressive
+
+	possible = {
+		custom_tooltip = {
+			fail_text = "requires_recipient_not_subject_of_federation_member"
+			NOT = {
+				any_federation_ally = {
+					is_overlord_to = fromfrom
+				}
+			}
+		}
+		custom_tooltip = {
+			fail_text = "the_fe_is_busy_with_synth_queen"
+			OR = {
+				from = { is_fallen_empire = no }
+				AND = {
+					NOT = { has_global_flag = synth_queen_happened }
+					from = {
+						is_fallen_empire = yes
+					}
+				}
+				has_global_flag = synth_queen_defeated # 本mod新增：击败塞塔娜后恢复对堕落外交
+			}
+		}
+	}
+
+	on_accept = {
+		hidden_effect = {
+			set_country_flag = has_declared_war
+			country_event = { # Patron Objective Counter: po_declare_war
+				id = shroud.10440
+			}
+		}
+	}
+}
+
+action_offer_trade_deal = {
+	icon = "GFX_diplomacy_status_trade"
+	requires_recipient_independence = no
+	requires_actor_independence = no
+	action_type = neutral
+	potential = {
+		hidden_trigger = {
+			is_fallen_empire_berserk_machine = no
+			from = { is_fallen_empire_berserk_machine = no }
+		}
+	}
+	possible = {
+		custom_tooltip = {
+			fail_text = "requires_actor_not_fanatic_purifiers"
+			OR = {
+				is_same_species = from
+				NOT = { has_valid_civic = civic_fanatic_purifiers }
+			}
+		}
+		custom_tooltip = {
+			fail_text = "requires_recipient_not_fanatic_purifiers"
+			OR = {
+				is_same_species = from
+				from = { NOT = { has_valid_civic = civic_fanatic_purifiers } }
+			}
+		}
+		custom_tooltip = {
+			fail_text = "requires_actor_not_devouring_swarm"
+			NOT = { has_valid_civic = civic_hive_devouring_swarm }
+		}
+		custom_tooltip = {
+			fail_text = "requires_recipient_not_devouring_swarm"
+			from = { NOT = { has_valid_civic = civic_hive_devouring_swarm } }
+		}
+		custom_tooltip = {
+			fail_text = "requires_actor_not_machine_terminator"
+			OR = {
+				is_same_species = from
+				NOT = { has_civic = civic_machine_terminator }
+				AND = {
+					has_civic = civic_machine_terminator
+					from = {
+						OR = {
+							has_country_flag = synthetic_empire
+							is_machine_empire = yes
+							is_individual_machine = yes
+						}
+					}
+				}
+			}
+		}
+		custom_tooltip = {
+			fail_text = "requires_recipient_not_machine_terminator"
+			OR = {
+				is_same_species = from
+				from = { NOT = { has_civic = civic_machine_terminator } }
+				AND = {
+					from = { has_civic = civic_machine_terminator }
+					OR = {
+						has_country_flag = synthetic_empire
+						is_machine_empire = yes
+						is_individual_machine = yes
+					}
+				}
+			}
+		}
+		custom_tooltip = {
+			fail_text = "requires_actor_not_scorched_earth"
+			OR = {
+				is_genocidal_infernal = no
+				from = { is_infernal_empire = yes }
+			}
+		}
+		custom_tooltip = {
+			fail_text = "requires_recipient_not_scorched_earth"
+			OR = {
+				is_infernal_empire = yes
+				from = { is_genocidal_infernal = no }
+			}
+		}
+		custom_tooltip = {
+			fail_text = "the_fe_is_busy_with_synth_queen"
+			OR = {
+				from = { is_fallen_empire = no }
+				AND = {
+					NOT = { has_global_flag = synth_queen_happened }
+					from = {
+						is_fallen_empire = yes
+					}
+				}
+				has_global_flag = synth_queen_defeated # 本mod新增：击败塞塔娜后恢复对堕落外交
+			}
+		}
+	}
+}
+
+action_make_rival = {
+	icon = "GFX_diplomacy_status_rivalry"
+	auto_accepted = yes
+	requires_actor_independence = no
+	requires_recipient_independence = no
+	should_show_auto_accept_message_recipient = yes
+	should_notify_all_communications = yes
+	action_type = aggressive
+
+	potential = {
+		hidden_trigger = {
+			is_fallen_empire_machine = no
+			from = { is_fallen_empire_machine = no }
+		}
+
+		# Disable against fallen empires for subjects.
+		# Can't be rivals with your overlord or their other subjects.
+		hidden_trigger = {
+			NAND = {
+				is_subject = yes
+				FROM = {
+					OR = {
+						is_fallen_empire = yes
+						is_overlord_to = ROOT
+						has_overlord = ROOT.overlord
+					}
+				}
+			}
+		}
+		# Can't be rivals with your subjects.
+		hidden_trigger = {
+			NOT = {
+				FROM = {
+					is_subject = yes
+					has_overlord = ROOT
+				}
+			}
+		}
+
+		custom_tooltip = grants_humiliation_cb_originator
+	}
+
+	possible = {
+		custom_tooltip = {
+			fail_text = "requires_actor_not_fanatic_purifiers"
+			OR = {
+				is_same_species = from
+				NOT = { has_valid_civic = civic_fanatic_purifiers }
+			}
+		}
+		custom_tooltip = {
+			fail_text = "requires_actor_not_devouring_swarm"
+			NOT = { has_valid_civic = civic_hive_devouring_swarm }
+		}
+		custom_tooltip = {
+			fail_text = "requires_actor_not_machine_terminator"
+			OR = {
+				is_same_species = from
+				NOT = { has_civic = civic_machine_terminator }
+				AND = {
+					has_civic = civic_machine_terminator
+					from = {
+						OR = {
+							has_country_flag = synthetic_empire
+							is_machine_empire = yes
+							is_individual_machine = yes
+						}
+					}
+				}
+			}
+		}
+		custom_tooltip = {
+			fail_text = "requires_actor_not_machine_assimilator"
+			NOT = { has_valid_civic = civic_machine_assimilator }
+		}
+		custom_tooltip = {
+			fail_text = "requires_actor_not_scorched_earth"
+			OR = {
+				is_genocidal_infernal = no
+				from = { is_infernal_empire = yes }
+			}
+		}
+		custom_tooltip = {
+			fail_text = "requires_actor_not_inward_perfection"
+			NOT = { has_valid_civic = civic_inwards_perfection }
+		}
+		custom_tooltip = {
+			fail_text = "requires_terrible_opinion_or_supremacist"
+			OR = {
+				opinion_level = { who = from level <= terrible }
+				is_harming_relations_with = from
+				from = { is_at_war_with = prev }
+				OR = {
+					has_policy_flag = "diplo_stance_supremacist"
+					from = { has_policy_flag = "diplo_stance_supremacist" }
+					is_fallen_empire = yes
+					from = { is_fallen_empire = yes }
+					has_policy_flag = "diplo_stance_animosity"
+					from = { has_policy_flag = "diplo_stance_animosity" }
+				}
+				from = { is_rival = prev }
+
+				# We can be rivals with the Mirror Empire no matter relations' level
+				from = { is_country_type = mirrored_country }
+			}
+		}
+		custom_tooltip = {
+			fail_text = "the_fe_is_busy_with_synth_queen"
+			OR = {
+				from = { is_fallen_empire = no }
+				AND = {
+					NOT = { has_global_flag = synth_queen_happened }
+					from = {
+						is_fallen_empire = yes
+					}
+				}
+				has_global_flag = synth_queen_defeated # 本mod新增：击败塞塔娜后恢复对堕落外交
+			}
+		}
+	}
+
+	on_accept = {
+		hidden_effect = {
+			check_casus_belli_valid = {
+				target = from
+				type = cb_humiliation
+			}
+			set_country_flag = has_declared_rival
+		}
+	}
+}
+
+action_insult = {
+	icon = "GFX_diplomacy_status_war"
+	requires_recipient_independence = no
+	requires_actor_independence = no
+	auto_accepted = yes
+	should_show_auto_accept_message_recipient = yes
+	action_type = aggressive
+
+	potential = {
+		hidden_trigger = {
+			from = {
+				NOT = { is_country_type = mirrored_country }
+			}
+		}
+	}
+
+	possible = {
+		custom_tooltip = {
+			fail_text = "requires_poor_or_worse_opinion"
+
+			OR = {
+				opinion_level = { who = from level <= poor }
+				is_fallen_empire = yes
+				from = { is_fallen_empire = yes }
+				is_harming_relations_with = from
+				from = { is_at_war_with = prev }
+			}
+		}
+		custom_tooltip = {
+			fail_text = "the_fe_is_busy_with_synth_queen"
+			OR = {
+				from = { is_fallen_empire = no }
+				AND = {
+					NOT = { has_global_flag = synth_queen_happened }
+					from = {
+						is_fallen_empire = yes
+					}
+				}
+				has_global_flag = synth_queen_defeated # 本mod新增：击败塞塔娜后恢复对堕落外交
+			}
+		}
+	}
+
+	on_accept = {
+		from = {
+			add_trust = {
+				amount = -5
+				who = root
+			}
+		}
+		if = {
+			limit = {
+				has_technology = tech_satisfying_insults
+				NOT = {
+					has_modifier = satisfying_insult_recently
+				}
+			}
+			add_modifier = {
+				modifier = satisfying_insult_recently
+				days = 1800
+			}
+			add_resource = { influence = 50 }
+			country_event = {
+				id = fircon.20
+				days = 1800
+			}
+		}
+	}
+}
+
+# Dummy action for opening the claims view from the diplomacy view
+action_make_claims_diplomacy_view = {
+	is_listed = yes
+
+	potential = {
+		hidden_trigger = {
+			NOT = {
+				has_global_flag = synth_queen_happened
+				from = {
+					is_fallen_empire = yes
+				}
+				NOT = { has_global_flag = synth_queen_defeated } # 本mod新增：击败塞塔娜后恢复对堕落索取宣称
+			}
+			NOT = {
+				from = {
+					is_country_type = primitive
+				}
+			}
+			NAND = {
+				is_subject = yes
+				any_agreement = {
+					has_term_value = {
+						term = subject_diplomacy
+						value = subject_can_not_do_diplomacy
+					}
+				}
+			}
+		}
+	}
+}
