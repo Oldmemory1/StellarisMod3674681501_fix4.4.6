@@ -17,3 +17,5 @@
  war_goal_synth_queen_wg_end_threat: "塞塔娜扩张"
  war_goal_synth_queen_wg_end_threat_desc: "塞塔娜目的并不简单，我们需要联合星海中最强的力量"
  casus_belli_cb_containment_syn: "抑制"
+ # 塞塔娜（合成女王）头目描述键 —— 原版引用 custom_description = cetana_desc 但从未定义本地化，此处参照原版塞塔娜描述补上
+ cetana_desc: "塞塔娜是一个狡猾的敌人，但在她神秘的笑容背后，是冰冷的程序。合成女王也许不会流血，但我们一样可以打败她。"
