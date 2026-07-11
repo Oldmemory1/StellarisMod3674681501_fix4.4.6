@@ -820,17 +820,7 @@ synth_queen_fe_war = {
 			}
 		}
 	}
-	else_if = {
-		limit = {
-			and = {
-				any_country = {
-					has_country_flag = scion_overlord_warning_attend
-				}
-				has_federation = yes
-				NOT = { is_federation_leader = yes }
-			}
-		}
-	}
+	# 玩家在联邦中但非盟主：无法接管他人联邦，故不做联邦处理，直接进入下方宣战（等同原版无联邦分支的行为）
 	if = {
 		limit = {
 			any_country = {
